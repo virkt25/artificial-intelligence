@@ -1,15 +1,17 @@
 
 from utils import *
-
+import copy
 
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
-square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
+square_units = [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI')
+                for cs in ('123', '456', '789')]
 unitlist = row_units + column_units + square_units
 
-# TODO: Update the unit list to add the new diagonal units
-unitlist = unitlist
-
+unitlist = unitlist + [
+    ['A1', 'B2', 'C3', 'D4', 'E5', 'F6', 'G7', 'H8', 'I9'],
+    ['A9', 'B8', 'C7', 'D6', 'E5', 'F4', 'G3', 'H2', 'I1']
+]
 
 # Must be called after all units (including diagonals) are added to the unitlist
 units = extract_units(unitlist, boxes)
@@ -53,8 +55,26 @@ def naked_twins(values):
     Pseudocode for this algorithm on github:
     https://github.com/udacity/artificial-intelligence/blob/master/Projects/1_Sudoku/pseudocode.md
     """
-    # TODO: Implement this function!
-    raise NotImplementedError
+    copyOfValues = copy.deepcopy(values)
+
+    for box in boxes:
+        duplicate = False
+        duplicateKeys = [box]
+
+        if len(values[box]) == 2:
+            for peer in peers[box]:
+                if values[box] == values[peer]:
+                    duplicate = True
+                    duplicateKeys.append(peer)
+
+            if duplicate is True and len(duplicateKeys) == 2:
+                for key in [value for value in peers[duplicateKeys[0]] if value in peers[duplicateKeys[1]]]:
+                    if key not in duplicateKeys:
+                        for v in values[box]:
+                            assign_value(copyOfValues, key,
+                                         copyOfValues[key].replace(v, ''))
+
+    return copyOfValues
 
 
 def eliminate(values):
@@ -73,8 +93,19 @@ def eliminate(values):
     dict
         The values dictionary with the assigned values eliminated from peers
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    singleValues = {}
+
+    # Get the single entries -- we can't do it while
+    # running the algo as it may create new "empty" values
+    for key, value in values.items():
+        if (len(value) == 1):
+            singleValues[key] = value
+
+    for key, value in singleValues.items():
+        for peer in peers[key]:
+            assign_value(values, peer, values[peer].replace(value, ''))
+
+    return values
 
 
 def only_choice(values):
@@ -97,8 +128,19 @@ def only_choice(values):
     -----
     You should be able to complete this function by copying your code from the classroom
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    for unit in unitlist:
+        numUnits = {}
+        for u in unit:
+            for r in values[u]:
+                if r not in numUnits:
+                    numUnits[r] = []
+                numUnits[r].append(u)
+
+        for k, v in numUnits.items():
+            if (len(v) == 1):
+                assign_value(values, v[0], k)
+
+    return values
 
 
 def reduce_puzzle(values):
@@ -113,10 +155,37 @@ def reduce_puzzle(values):
     -------
     dict or False
         The values dictionary after continued application of the constraint strategies
-        no longer produces any changes, or False if the puzzle is unsolvable 
+        no longer produces any changes, or False if the puzzle is unsolvable
     """
-    # TODO: Copy your code from the classroom and modify it to complete this function
-    raise NotImplementedError
+    stalled = False
+    while not stalled:
+        # Check how many boxes have a determined value
+        solved_values_before = len(
+            [box for box in values.keys() if len(values[box]) == 1])
+
+        # Your code here: Use the Eliminate Strategy
+        values = eliminate(values)
+
+        # Naked Twins Strategy
+        values = naked_twins(values)
+
+        # Your code here: Use the Only Choice Strategy
+        values = only_choice(values)
+
+        # Check how many boxes have a determined value, to compare
+        solved_values_after = len(
+            [box for box in values.keys() if len(values[box]) == 1])
+
+        # If no new values were added, stop the loop.
+        stalled = solved_values_before == solved_values_after
+
+        if (solved_values_after == 81):
+            break
+
+        # Sanity check, return False if there is a box with zero available values:
+        if len([box for box in values.keys() if len(values[box]) == 0]):
+            return False
+    return values
 
 
 def search(values):
@@ -138,8 +207,40 @@ def search(values):
     You should be able to complete this function by copying your code from the classroom
     and extending it to call the naked twins strategy.
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    values = reduce_puzzle(values)
+
+    if values is False:
+        return False
+
+    if solved(values) is True:
+        return values
+
+    smallestOptionKey = None
+    smallestOptionLen = 10
+
+    for key, value in values.items():
+        if len(value) > 1 and smallestOptionLen > len(value):
+            smallestOptionKey = key
+            smallestOptionLen = len(value)
+
+        if (smallestOptionLen == 2):
+            break
+
+    for i in values[smallestOptionKey]:
+        valuesCopy = copy.deepcopy(values)
+        valuesCopy[smallestOptionKey] = i
+        newValues = search(valuesCopy)
+
+        if newValues is not False and newValues is not None:
+            if solved(newValues) is True:
+                return newValues
+
+
+def solved(values):
+    for value in values.values():
+        if (len(value) > 1):
+            return False
+    return True
 
 
 def solve(grid):
@@ -149,7 +250,7 @@ def solve(grid):
     ----------
     grid(string)
         a string representing a sudoku grid.
-        
+
         Ex. '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
 
     Returns
@@ -164,6 +265,10 @@ def solve(grid):
 
 if __name__ == "__main__":
     diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
+    diag_sudoku_grid = '..4...8........1.4..8.4.6...4.........5.....3.1...4................9..2.46.7.....'
+    diag_sudoku_grid = '1......2.....9.5...............8...4.........9..7123...........3....4.....936.4..'
+    diag_sudoku_grid = '..............1.....6...4.....1.....15..7.3...8...5..2....872.......6943.....4..8'
+
     display(grid2values(diag_sudoku_grid))
     result = solve(diag_sudoku_grid)
     display(result)
