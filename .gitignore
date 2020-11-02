@@ -1,2 +1,5 @@
 __pycache__/
 .ipynb_checkpoints
+*.pyc
+sudoku_solver-*.zip
+sudoku_solver-result-*.json
