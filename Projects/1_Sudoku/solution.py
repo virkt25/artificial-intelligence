@@ -55,7 +55,6 @@ def naked_twins(values):
     Pseudocode for this algorithm on github:
     https://github.com/udacity/artificial-intelligence/blob/master/Projects/1_Sudoku/pseudocode.md
     """
-    copyOfValues = copy.deepcopy(values)
 
     for box in boxes:
         duplicate = False
@@ -63,18 +62,18 @@ def naked_twins(values):
 
         if len(values[box]) == 2:
             for peer in peers[box]:
-                if values[box] == values[peer]:
+                if sorted(values[box]) == sorted(values[peer]):
                     duplicate = True
                     duplicateKeys.append(peer)
 
-            if duplicate is True and len(duplicateKeys) == 2:
+            if duplicate is True:
                 for key in [value for value in peers[duplicateKeys[0]] if value in peers[duplicateKeys[1]]]:
                     if key not in duplicateKeys:
                         for v in values[box]:
-                            assign_value(copyOfValues, key,
-                                         copyOfValues[key].replace(v, ''))
+                            assign_value(values, key,
+                                         values[key].replace(v, ''))
 
-    return copyOfValues
+    return values
 
 
 def eliminate(values):
@@ -265,7 +264,6 @@ def solve(grid):
 
 if __name__ == "__main__":
     diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
-    diag_sudoku_grid = '..4...8........1.4..8.4.6...4.........5.....3.1...4................9..2.46.7.....'
     diag_sudoku_grid = '1......2.....9.5...............8...4.........9..7123...........3....4.....936.4..'
     diag_sudoku_grid = '..............1.....6...4.....1.....15..7.3...8...5..2....872.......6943.....4..8'
 
